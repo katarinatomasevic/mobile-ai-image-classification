@@ -1,6 +1,21 @@
-fastapi
-uvicorn
-transformers
-torch
-torchvision
-pillow
+# Core API
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.20
+
+# Image processing
+pillow==11.0.0
+numpy==1.26.4
+
+# Hugging Face
+transformers==4.47.1
+
+# PyTorch CPU-only
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.5.1+cpu
+torchvision==0.20.1+cpu
+
+# TensorFlow CPU-only
+tensorflow==2.15.0
+
+# DO NOT install separate keras - use TF's built-in
