@@ -1,9 +1,13 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 
 from app.services.hf_service import HuggingFaceService
 from app.services.tm_service import TeachableMachineService
 
+import logging
+
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 hf_service = HuggingFaceService()
 
@@ -38,64 +42,51 @@ async def get_status():
 
 # Image classification using Hugging Face model
 @router.post("/classify/hf")
-async def classify_with_huggingface(
-    image: UploadFile = File(...),
-    top_k: int = 3
-):
-
-    if not image.content_type.startswith("image/"):
-        raise HTTPException(
-            status_code=400,
-            detail="File is not an image."
-        )
-
-    image_bytes = await image.read()
-    predictions = hf_service.classify_image(image_bytes, top_k=top_k)
-
-    return {
-        "model": "huggingface",
-        "model_name": "google/vit-base-patch16-224",
-        "filename": image.filename,
-        "predictions": predictions
-    }
-
+async def classify_with_huggingface(request: Request):
+    #logger.info(f"Received file: {file.filename}, content_type: {file.content_type}")
+    
+    try:
+        image_bytes = await request.body()
+        logger.info(f"Read {len(image_bytes)} bytes")
+        
+        if not image_bytes:
+            raise HTTPException(status_code=400, detail="Image not found.")
+        
+        predictions = hf_service.classify_image(image_bytes)
+        logger.info(f"Predictions: {predictions}")
+        
+        return {
+            "model": "huggingface",
+            "model_name": "google/vit-base-patch16-224",
+            "predictions": predictions
+        }
+    except Exception as e:
+        logger.error(f"Classification failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 # Image classification using Teachable Machine model
 @router.post("/classify/tm")
-async def classify_with_teachable_machine(
-    image: UploadFile = File(...),
-    top_k: int = 3
-):
-
-    if not tm_enabled:
-        raise HTTPException(
-            status_code=503,
-            detail="Teachable Machine model not loaded. Please check model files."
-        )
+async def classify_with_teachable_machine(request: Request):
+    #logger.info(f"Received file: {file.filename}, content_type: {file.content_type}")
     
-    if not image.content_type.startswith("image/"):
-        raise HTTPException(
-            status_code=400,
-            detail="File is not an image."
-        )
-
+    if not tm_enabled:
+        raise HTTPException(status_code=503, detail="TM model not loaded")
+    
     try:
-        image_bytes = await image.read()
-        predictions = tm_service.classify_image(image_bytes, top_k=top_k)
-
+        image_bytes = await request.body()
+        logger.info(f"Read {len(image_bytes)} bytes")
+        
+        predictions = tm_service.classify_image(image_bytes)
+        logger.info(f"Predictions: {predictions}")
+        
         return {
             "model": "teachable_machine",
-            "filename": image.filename,
             "predictions": predictions,
             "classes": tm_service.class_names
         }
-    
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Classification failed: {str(e)}"
-        )
-
+        logger.error(f"Classification failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
 @router.get("/models/tm/info")
