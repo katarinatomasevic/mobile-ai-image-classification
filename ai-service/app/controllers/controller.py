@@ -80,7 +80,7 @@ async def classify_with_teachable_machine(request: Request):
         logger.info(f"Predictions: {predictions}")
         
         return {
-            "model": "teachable_machine",
+            "model": "teachable machine",
             "predictions": predictions,
             "classes": tm_service.class_names
         }
